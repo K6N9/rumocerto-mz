@@ -1,0 +1,1 @@
+<template><div class="container not-found"><span class="error-404">404</span><h1>Este caminho ainda não existe.</h1><p>A página solicitada não foi encontrada. O teu próximo passo pode começar na página inicial.</p><RouterLink to="/" class="btn btn-primary">Voltar ao início ↗</RouterLink></div></template>

@@ -1,0 +1,14 @@
+RumoCerto MZ v2.1 — Actualização para o teu projecto já instalado no Mac
+
+1) Pára o Vite e o Cloudflare Worker com Control + C.
+2) Faz uma cópia da pasta rumocerto-mz-final.
+3) Descompacta o ZIP DE ACTUALIZACAO dentro da pasta rumocerto-mz-final usando unzip -o.
+4) Executa: sh APLICAR_CORRECOES_NO_MAC.sh
+5) Reinicia o Vite (5173) e o Worker (8787) em terminais separados.
+
+O ZIP DE ACTUALIZACAO NAO contém backend/wrangler.toml, .env.local nem backend/.dev.vars:
+preserva o ID da namespace Cloudflare e as chaves já existentes.
+Não uses o ZIP completo para substituir o projecto com chaves configuradas.
+
+EmailJS Free: o segundo e-mail usa link PDF protegido, sem anexo.
+Assegura que o texto 'Descarregar o meu plano em PDF' está hiperligado ao URL {{link_pdf}} no template 2.

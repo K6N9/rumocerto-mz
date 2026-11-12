@@ -1,0 +1,12 @@
+# O ficheiro .dev.vars real NÃO deve ser enviado ao GitHub.
+EMAILJS_SERVICE_ID="service_v12e9ah"
+EMAILJS_PUBLIC_KEY="SUBSTITUIR"
+EMAILJS_TEMPLATE_CONFIRM="template_veq29mm"
+EMAILJS_TEMPLATE_PLAN="template_ktb1bxm"
+EMAILJS_PRIVATE_KEY="SUBSTITUIR_SECRETAMENTE"
+# IA OPCIONAL. Se não estiver disponível, é usado o motor gratuito de regras.
+# Em contas gratuitas do EmailJS é utilizado link PDF, não anexo.
+GEMINI_API_KEY=""
+ALLOWED_ORIGINS="http://localhost:5173,http://localhost:4173"
+PUBLIC_WORKER_URL="http://localhost:8787"
+RATE_SALT="SUBSTITUIR_POR_UMA_FRASE_ALEATORIA"

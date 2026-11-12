@@ -1,0 +1,11 @@
+name = "rumocerto-mz-api"
+main = "src/worker.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[triggers]
+crons = ["*/2 * * * *"]
+
+[[kv_namespaces]]
+binding = "JOBS"
+id = "ff511f0a81ba4ac6b05df652ac1950d1"
