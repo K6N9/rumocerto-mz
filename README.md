@@ -1,96 +1,73 @@
-
-# RumoCerto MZ — versão 3.6
+# RumoCerto MZ 4.0
 
 **Projecto Final de Programação Web II · Grupo 8 · LECC31 · ISUTC · 2026**
 
-Aplicação de orientação profissional para jovens moçambicanos. Permite consultar indicadores oficiais do Banco Mundial, criar um plano educativo de 30 dias, descarregar o documento em PDF e acompanhar as tarefas concluídas. O envio opcional por e-mail utiliza Cloudflare Workers, Durable Objects (SQLite) com alarmes e EmailJS. O Gemini pode ser utilizado para personalizar o texto do diagnóstico, com alternativa gratuita sem serviços de IA.
+Plataforma de orientação profissional para jovens moçambicanos. Reúne indicadores de desemprego juvenil do Banco Mundial, planos gratuitos de 30 dias e oportunidades com fonte verificada. A conta pessoal acrescenta perfil, progresso, RumoMatch, favoritos, CV em PDF, candidaturas e alertas.
 
-**Site:** https://k6n9.github.io/rumocerto-mz/  
-**Repositório:** https://github.com/K6N9/rumocerto-mz
+- [Site público](https://k6n9.github.io/rumocerto-mz/)
+- [Repositório do Grupo 8](https://github.com/K6N9/rumocerto-mz)
+- [Estado e evidências da v4](docs/ESTADO_FINAL_V4.md)
 
-A versão deste pacote é a **3.6.0**. O site público só apresentará estas alterações depois de a versão ser integrada no branch `main` e publicada. A comunicação exige também a publicação do Worker actualizado. O frontend consulta `/api/saude` e verifica a versão do protocolo antes de enviar pedidos.
+As dificuldades de acesso a formação e a experiência profissional ajudam a explicar a necessidade de orientação e preparação para candidaturas. [Afrobarometer](https://www.afrobarometer.org/articles/os-jovens-mocambicanos-enfrentam-dificuldades-para-encontrar-emprego-afirmando-que-sao-prejudicados-pela-falta-de-formacao-e-de-experiencia-profissional/)
 
-## Interface e funcionalidades
-
-A interface da versão 3.6 organiza a criação do plano em três passos, mantém campos opcionais recolhidos, apresenta um resumo de quatro semanas e mostra tarefas e progresso por semana. A página inicial adapta-se quando já existe um plano guardado. A página inicial mostra um indicador em destaque, mantendo os restantes na página de indicadores. A tabela de dados históricos apresenta a série completa.
-
-## Equipa
-
-**Grupo 8 — Programação Web II | LECC31 | ISUTC | 2026**
-
-O RumoCerto MZ foi desenvolvido pelos seguintes membros do Grupo 8 do Instituto Superior de Transportes e Comunicações (ISUTC).
-
-| Nº | Nome completo | Conta GitHub |
-|:---:|---|---|
-| 1 | **Benjamim Junior** | [@benjamimjunior](https://github.com/benjamimjunior) |
-| 2 | **Elmer Almirante** | [@ElmerAlmirante](https://github.com/ElmerAlmirante) |
-| 3 | **Mabikane Arnaldo** | [@K6N9](https://github.com/K6N9) |
-
-### Colaboração no projecto
-
-O desenvolvimento do RumoCerto MZ é realizado de forma colaborativa através do GitHub. Cada membro utiliza a sua conta pessoal para contribuir para o código, a documentação, os testes e as melhorias da plataforma.
-
-As contribuições são organizadas através de branches individuais, commits e Pull Requests, permitindo manter o histórico das alterações e identificar a participação de cada membro.
-
-**Repositório oficial:** [K6N9/rumocerto-mz](https://github.com/K6N9/rumocerto-mz)
-
-## Tecnologias
-
-Vue 3, Composition API, Vue Router, Vite, JavaScript, CSS responsivo, API do Banco Mundial, Cloudflare Workers, Durable Objects com SQLite, alarmes e EmailJS. A interface e o BRD estão escritos em português.
-
-Os indicadores são obtidos através de `fetch` à API pública do Banco Mundial para Moçambique (`country/MOZ`):
-
-- `SL.UEM.1524.ZS` — desemprego juvenil total;
-- `SL.UEM.1524.FE.ZS` — mulheres;
-- `SL.UEM.1524.MA.ZS` — homens.
-
-A origem, o ano e a população representada são identificados junto dos gráficos. As séries representam estimativas da OIT para a força de trabalho dos 15 aos 24 anos e não previsões individuais.
+A v4 está em revisão na branch `mabikane/rumocerto-v4`. O GitHub Pages consultado em 19 de Novembro de 2026 serve uma versão anterior. A [auditoria final](docs/AUDITORIA_FINAL_V4.md) regista os testes e os requisitos para publicação.
 
 ## Executar localmente
+
+Com Node.js 22 ou superior:
 
 ```bash
 npm ci
 npm run dev
-```
-
-Testes automatizados e compilação:
-
-```bash
 npm test
+npm run check:syntax
 npm run build
 ```
 
-## Variáveis de ambiente
+Abra o endereço indicado pelo Vite. Sem configuração, é possível consultar os indicadores, pesquisar a cópia local de oportunidades verificadas, criar e descarregar o plano e guardar o progresso no navegador. O catálogo autenticado, a conta e a administração usam Supabase. Os alertas agendados e o e-mail opcional usam Cloudflare Workers. Consulte as variáveis em [Configuração](docs/CONFIGURACAO_AMBIENTE.md).
 
-No frontend, `VITE_WORKER_URL` aponta para o endereço HTTPS do Worker de produção. A publicação no GitHub Pages usa esta variável configurada em `Settings → Secrets and variables → Actions → Variables`.
+`npm run test:browser` utiliza o Chrome instalado para os testes de interface. Consulte [Testes e validação](docs/TESTES_V4.md).
 
-No Cloudflare Worker, as variáveis `EMAILJS_SERVICE_ID`, `EMAILJS_PUBLIC_KEY`, `EMAILJS_TEMPLATE_CONFIRM`, `EMAILJS_TEMPLATE_PLAN`, `EMAILJS_PRIVATE_KEY`, `PUBLIC_WORKER_URL`, `ALLOWED_ORIGINS`, `RATE_SALT` e `DOWNLOAD_SECRET` são configuradas no serviço. `DOWNLOAD_SECRET` deve ter pelo menos 24 caracteres aleatórios e não deve ser exposto. `GEMINI_API_KEY` é opcional; `GEMINI_MODEL` pode ser configurado como `gemini-3.5-flash-lite`. **As chaves privadas nunca devem ficar em ficheiros públicos, no frontend ou no histórico Git.** Os ficheiros `.env.example` e `backend/.dev.vars.example` indicam apenas nomes e parâmetros públicos.
+## Funcionalidades
 
-O EmailJS disponibiliza dois modelos: confirmação de pedido e entrega de ligação privada para PDF. A mensagem final é processada por um alarme de Durable Object cerca de cinco minutos depois, e não inclui anexo. A interface consulta o estado de configuração do serviço e informa quando o envio não está disponível, sem impedir o PDF local. Um estado «incerto» não é reenviado automaticamente; o utilizador é informado de que deve confirmar a recepção. O gerador PDF usa uma fonte TrueType Unicode incorporada directamente no PDF, obtida por HTTPS do projecto DejaVu alojado no repositório Prawn. Preserva acentos, o euro, marcas de conclusão e os caracteres cobertos pela fonte. A fonte não é incluída separadamente neste repositório. Quando não é possível obter a fonte, o sistema mantém a geração em modo de compatibilidade WinAnsi e identifica os caracteres não suportados por `[U+XXXX]`. Alguns pictogramas e alfabetos não cobertos pela fonte também usam esta representação. O pedido da fonte não transmite dados do utilizador.
+| Área | Funcionalidades |
+| --- | --- |
+| Pública | Início, indicadores com gráfico e CSV, central de oportunidades com pesquisa e detalhe, preparação profissional, plano de 30 dias, progresso, PDF, Sobre e 404. |
+| Pessoal | Auth por e-mail, perfil e preferências, planos guardados na conta, favoritos, RumoMatch explicável, currículo, histórico de candidaturas, notificações, exportação de dados e pedido de eliminação. |
+| Administração | Gestão de oportunidades e fontes, verificação, arquivamento, estatísticas agregadas, estado de serviços, falhas de envio, auditoria e configuração de alertas. O backend valida o papel administrativo. |
 
-## Estrutura
+O RumoMatch aponta critérios compatíveis, incompatíveis e por confirmar. As candidaturas são registadas pelo titular e submetidas na fonte externa. Os e-mails de plano exigem consentimento no formulário. Os resumos semanais têm consentimento próprio e podem ser cancelados nas definições.
 
-`src/` inclui páginas Vue, componentes e composables; `shared/` contém as regras de plano, indicadores e PDF; `backend/` contém o Worker e a configuração dos Durable Objects; `tests/` contém testes automatizados.
+Os planos v3.6 continuam acessíveis com as conclusões originais. A conversão para 30 tarefas é opcional e guarda uma versão separada. O catálogo remoto exige revisão das fontes. Quando a pesquisa remota está vazia, a interface oferece uma consulta separada à cópia local enquanto houver anúncios vigentes.
 
-## Segurança e privacidade
+## Tecnologias e fontes
 
-O utilizador autoriza expressamente os e-mails. Os dados do perfil, o plano e o progresso são guardados no navegador, excepto os dados enviados ao Worker quando se pede o envio. Pedidos externos são armazenados temporariamente em Durable Objects durante até sete dias. O acesso ao PDF utiliza uma assinatura HMAC e o estado do pedido é protegido por um token. A opção de personalização com Gemini é voluntária e identificada no formulário. A plataforma não recolhe números de documento nem promete oportunidades de emprego.
+Vue 3, Vue Router, Vite, JavaScript, CSS, Supabase Auth e PostgreSQL com RLS, Cloudflare Workers e Durable Objects SQLite, EmailJS e GitHub Actions. O Gemini é opcional e complementa o diagnóstico do plano quando disponível. O motor local de regras mantém a geração e o PDF disponíveis.
 
-O sistema inclui validação no frontend e no Worker, limitação de pedidos por IP e e-mail com libertação coordenada de reservas rejeitadas, protecção CORS e verificação de compatibilidade entre frontend e backend. A submissão utiliza um identificador persistente, evitando novos e-mails ao repetir um pedido já registado. O segundo e-mail só é tentado uma vez por pedido; em caso de resposta incerta do fornecedor, a entrega pode falhar sem repetição automática. Os alarmes recuperam pedidos interrompidos antes da confirmação e eliminam os registos após o prazo de retenção. Os testes automatizados simulam o fornecedor de e-mail; a recepção efectiva das duas mensagens deve ser verificada em produção antes da defesa. A publicação e a existência de contribuições individuais também devem ser confirmadas no GitHub.
+- API do Banco Mundial para Moçambique (`MOZ`), séries `SL.UEM.1524.ZS`, `SL.UEM.1524.FE.ZS` e `SL.UEM.1524.MA.ZS`. As estimativas da OIT representam a força de trabalho entre 15 e 24 anos. [Banco Mundial](https://data.worldbank.org/indicator/SL.UEM.1524.ZS?locations=MOZ)
+- Os detalhes do catálogo ligam ao anúncio e à candidatura da entidade. A cópia local tem revisão datada e caduca automaticamente. [Verificação das fontes](docs/VERIFICACAO_SERVICOS.md)
+- O PDF de plano usa fonte TrueType quando disponível e um modo local de compatibilidade. O CV usa uma fonte padrão do PDF e preserva os caracteres portugueses. [Fonte DejaVu utilizada no plano](https://github.com/prawnpdf/prawn/blob/master/data/fonts/DejaVuSans.ttf)
 
-## Fontes
+## Equipa e colaboração
 
-- Afrobarometer, comunicado de 23 de Junho de 2026: https://www.afrobarometer.org/articles/os-jovens-mocambicanos-enfrentam-dificuldades-para-encontrar-emprego-afirmando-que-sao-prejudicados-pela-falta-de-formacao-e-de-experiencia-profissional/
-- Banco Mundial, indicador de desemprego juvenil para Moçambique: https://data.worldbank.org/indicator/SL.UEM.1524.ZS?locations=MOZ
-- Documentação da API do Banco Mundial: https://datahelpdesk.worldbank.org/knowledgebase/articles/889392
-- Vue: https://vuejs.org/
-- Cloudflare Workers: https://developers.cloudflare.com/workers/
-- EmailJS: https://www.emailjs.com/docs/
-- Gemini API, modelos disponíveis: https://ai.google.dev/gemini-api/docs/models
-- Fonte DejaVu Sans (TrueType): https://github.com/prawnpdf/prawn/blob/master/data/fonts/DejaVuSans.ttf
+| Nome | GitHub |
+| --- | --- |
+| Benjamim Junior | [@benjamimjunior](https://github.com/benjamimjunior) |
+| Elmer Almirante | [@ElmerAlmirante](https://github.com/ElmerAlmirante) |
+| Mabikane Arnaldo | [@K6N9](https://github.com/K6N9) |
 
-## Colaboração e integridade académica
+Cada membro contribui na sua branch com a própria conta e submete um pull request para revisão de outro membro. O enunciado académico também pede os números de estudante e um BRD separado em PDF. Confirme os dados académicos com o Grupo 8 antes da entrega.
 
-O trabalho deve ser original e explicado pelos seus autores. Cada membro deve utilizar a sua própria conta GitHub, criar um branch e submeter um commit por pull request revisto por outro membro. Os registos desses contributos não podem ser simulados.
+ChatGPT foi utilizado como apoio à implementação Vue, migrations, testes e documentação. A equipa revê o código, confirma as fontes e valida os serviços na sua configuração. O Gemini é usado apenas como funcionalidade opcional de personalização.
 
-A equipa utilizou ChatGPT como apoio à estruturação, revisão e desenvolvimento do protótipo. Gemini é uma funcionalidade opcional da aplicação, não uma fonte dos indicadores oficiais. A equipa é responsável por validar o código, as fontes e todos os resultados apresentados.
+## Documentação
+
+- [Auditoria da versão 3.6](docs/AUDITORIA_V36.md)
+- [Auditoria final da v4](docs/AUDITORIA_FINAL_V4.md)
+- [Arquitectura v4](docs/ARQUITECTURA_V4.md)
+- [Matriz de requisitos e fluxogramas](docs/REQUISITOS_E_FLUXOGRAMAS.md)
+- [Matriz de verificação dos serviços](docs/VERIFICACAO_SERVICOS.md)
+- [Testes v4](docs/TESTES_V4.md)
+- [Configuração de ambiente](docs/CONFIGURACAO_AMBIENTE.md)
+- [Guia da administração](docs/GUIA_ADMIN.md)
+- [Estado da entrega](docs/ESTADO_FINAL_V4.md)
