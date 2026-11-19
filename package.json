@@ -1,23 +1,28 @@
 {
   "name": "rumocerto-mz",
   "private": true,
-  "version": "3.6.0",
+  "version": "4.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test tests/*.test.js",
-    "check:syntax": "node --check shared/versao.js && node --check shared/persistencia.js && node --check shared/planner.js && node --check shared/estado.js && node --check shared/pdf.js && node --check shared/fonteUnicode.js && node --check backend/worker.js && node --check shared/perfis.js",
+    "check:syntax": "node --check backend/worker.js && node --check backend/alertas.js && node --check backend/email.js && node --check shared/versao.js && node --check shared/persistencia.js && node --check shared/contratoPlano.js && node --check shared/chavePublicaSupabase.js && node --check shared/planner.js && node --check shared/estado.js && node --check shared/pdf.js && node --check shared/fonteUnicode.js && node --check shared/perfis.js && node --check shared/rumomatch.js && node --check shared/oportunidades.js && node --check shared/curriculo.js && node --check scripts/validarAmbientePublico.js",
     "worker:dev": "wrangler dev --config backend/wrangler.toml",
-    "worker:deploy": "wrangler deploy --config backend/wrangler.toml"
+    "worker:deploy": "wrangler deploy --config backend/wrangler.toml",
+    "test:browser": "node --test tests/navegador.mjs",
+    "test:auth-local": "node --test tests/supabase-local.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "2.118.0",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.17",
     "@vitejs/plugin-vue": "^5.2.1",
+    "playwright-core": "1.65.1",
     "vite": "^6.0.7",
     "wrangler": "^4.43.0"
   }

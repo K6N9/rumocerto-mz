@@ -1,3 +1,4 @@
+import { diaDaTarefa } from './planner.js'
 import { carregarFonteTTF, larguraFonte, textoCodificado, objectosFonte, obterFonteUnicode, textoFonte } from './fonteUnicode.js'
 function winAnsi(value) {
   return String(value ?? '').normalize('NFC')
@@ -165,7 +166,7 @@ export function gerarPdf(pedido, plano, opcoes = {}) {
     partes.push({ texto: `Tempo previsto para esta semana: ${semana.minutosSugeridos} minutos`, size: 9.3, bold: true, gap: 9, cor: '0.06 0.45 0.40' })
     semana.tarefas.forEach((t, i) => {
       const duracao = semana.minutosPorTarefa?.[i]
-      partes.push({ texto: `${i + 1}.  ${t}${duracao ? ` (${duracao} min)` : ''}`, size: 9.5, gap: 5, recuo: 9 })
+      partes.push({ texto: `Dia ${diaDaTarefa(semana, i)}.  ${t}${duracao ? ` (${duracao} min)` : ''}`, size: 9.5, gap: 5, recuo: 9 })
     })
     partes.push({ texto: `Resultado esperado: ${semana.entregavel}`, size: 9.4, bold: true, gap: 5 })
     partes.push({ texto: `Critério de progresso: ${semana.indicador}`, size: 9.2, gap: 13, cor: corCinza })
@@ -224,6 +225,10 @@ export function gerarPdf(pedido, plano, opcoes = {}) {
   for (const frase of [...plano.recursos, ...plano.avisos]) paragrafo(`- ${frase}`, { tamanho: 9.5, espaco: 6 })
   folhas.push(comandos.join('\n'))
 
+  return montarPdf(folhas, fonte)
+}
+
+function montarPdf(folhas, fonte = null) {
   const objetos = []
   const add = s => (objetos.push(s), objetos.length)
   const root = add('')
@@ -254,4 +259,49 @@ export function gerarPdf(pedido, plano, opcoes = {}) {
 export async function gerarPdfUnicode(pedido, plano, opcoes = {}) {
   const dadosFonte = opcoes.fonteBytes || await obterFonteUnicode()
   return gerarPdf(pedido, plano, { fonteBytes: dadosFonte })
+}
+
+export function gerarPdfCurriculo(curriculo) {
+  const folhas = []
+  let comandos = []
+  let y
+  function escrever(texto, tamanho, cor, negrito) {
+    comandos.push(`${cor} rg BT /${negrito ? 'B' : 'R'} ${tamanho} Tf 1 0 0 1 49 ${y.toFixed(1)} Tm (${pdfTexto(texto)}) Tj ET`)
+  }
+  function novaPagina() {
+    if (comandos.length) folhas.push(comandos.join('\n'))
+    comandos = ['0.063 0.142 0.247 rg 0 827 595 15 re f', '0.10 0.65 0.55 rg 0 822 595 5 re f']
+    y = 36
+    escrever(`Currículo  |  ${folhas.length + 1}`, 9, '0.32 0.41 0.46', false)
+    y = 773
+  }
+  function bloco(texto, { tamanho = 11, negrito = false, cor = '0.12 0.20 0.29' } = {}) {
+    for (const paragrafo of String(texto).split('\n')) {
+      for (const linha of quebrar(paragrafo, tamanho, 490, negrito)) {
+        if (y < 64) novaPagina()
+        escrever(linha, tamanho, cor, negrito)
+        y -= tamanho * 1.46
+      }
+    }
+    y -= 7
+  }
+  if (!curriculo?.nome?.trim()) throw new Error('Indique o nome profissional antes de exportar.')
+  novaPagina()
+  bloco(curriculo.nome, { tamanho: 26, negrito: true })
+  if (curriculo.cargo) bloco(curriculo.cargo, { tamanho: 14 })
+  const contactos = [curriculo.localidade, curriculo.email, curriculo.telefone, curriculo.portefolio].filter(Boolean)
+  if (contactos.length) bloco(contactos.join('  |  '), { tamanho: 10, cor: '0.32 0.41 0.46' })
+  const secoes = {
+    resumo: 'Resumo profissional', formacao: 'Formação académica', experiencia: 'Experiência profissional',
+    competencias: 'Competências', certificacoes: 'Certificações', idiomas: 'Idiomas', projectos: 'Projectos'
+  }
+  for (const [campo, titulo] of Object.entries(secoes)) {
+    if (!curriculo[campo]?.trim()) continue
+    if (y < 112) novaPagina()
+    y -= 5
+    bloco(titulo, { tamanho: 14, negrito: true, cor: '0.06 0.45 0.40' })
+    bloco(curriculo[campo])
+  }
+  folhas.push(comandos.join('\n'))
+  return montarPdf(folhas)
 }

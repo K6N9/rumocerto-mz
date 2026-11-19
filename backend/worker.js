@@ -1,11 +1,16 @@
-import { gerarPlano, validarPerfil, limparTexto } from '../shared/planner.js'
+import { emailJS } from './email.js'
+import { executarAlertas } from './alertas.js'
+import { gerarPlanoDiario, validarPerfil, limparTexto } from '../shared/planner.js'
 import { gerarPdf, gerarPdfUnicode } from '../shared/pdf.js'
+import { erroPlano } from '../shared/contratoPlano.js'
 import { VERSAO_PROTOCOLO } from '../shared/versao.js'
 
 const RETENCAO_MS = 7 * 24 * 60 * 60 * 1000
 const ESPERA_MS = 5 * 60 * 1000
 const LIMITE_MS = 90 * 1000
-const ORIGEM_LOCAL = 'http://localhost:5173,http://localhost:4173'
+const ORIGEM_LOCAL = 'http://localhost:5173,http://localhost:4173,http://127.0.0.1:5173,http://127.0.0.1:4173'
+const MAXIMO_PEDIDO_BYTES = 8000
+const ROTA_PEDIDO = /^\/api\/planos\/([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})(\/pdf)?$/i
 const PRAZO_ESTADO_MS = 75 * 1000
 const SUBMISSAO_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -24,21 +29,27 @@ function origemPermitida(request, env) {
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Vary': 'Origin'
-  } : {}
+  } : { 'Vary': 'Origin' }
 }
 async function digest(valor) {
   const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(valor))
   return [...new Uint8Array(bytes)].map(n => n.toString(16).padStart(2, '0')).join('')
 }
+function raizWorker(valor) {
+  const url = new URL(valor)
+  const local = url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname)
+  if (!(url.protocol === 'https:' || local) || url.username || url.password || url.search || url.hash || url.pathname !== '/') {
+    throw new Error('Endereço público inválido')
+  }
+  return url
+}
 function configuracaoEnvio(env) {
-  if (!env?.PLANOS || !env?.LIMITES || !env.EMAILJS_SERVICE_ID || !env.EMAILJS_PUBLIC_KEY ||
-    !env.EMAILJS_TEMPLATE_CONFIRM || !env.EMAILJS_TEMPLATE_PLAN ||
-    String(env.DOWNLOAD_SECRET || '').length < 24 || String(env.RATE_SALT || '').length < 16) return false
-  try {
-    const url = new URL(String(env.PUBLIC_WORKER_URL || ''))
-    return (url.protocol === 'https:' || (url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname))) &&
-      !url.username && !url.password && !url.search && !url.hash
-  } catch { return false }
+  if (!env?.PLANOS || !env?.LIMITES ||
+      !['EMAILJS_SERVICE_ID', 'EMAILJS_PUBLIC_KEY', 'EMAILJS_TEMPLATE_CONFIRM', 'EMAILJS_TEMPLATE_PLAN']
+        .every(chave => typeof env[chave] === 'string' && env[chave].trim()) ||
+      String(env.DOWNLOAD_SECRET || '').trim().length < 24 || String(env.RATE_SALT || '').trim().length < 16) return false
+  try { raizWorker(env.PUBLIC_WORKER_URL); return true }
+  catch { return false }
 }
 async function gerarToken(env, id, email) {
   const chave = await crypto.subtle.importKey('raw', new TextEncoder().encode(String(env.DOWNLOAD_SECRET)),
@@ -47,9 +58,6 @@ async function gerarToken(env, id, email) {
     new TextEncoder().encode(`rumocerto:estado:${id}:${email.toLowerCase()}`))
   return [...new Uint8Array(assinatura)].slice(0, 24).map(n => n.toString(16).padStart(2, '0')).join('')
 }
-class FalhaEmail extends Error {
-  constructor(mensagem, incerta = true) { super(mensagem); this.incerta = incerta }
-}
 async function assinatura(env, id) {
   if (!env.DOWNLOAD_SECRET || String(env.DOWNLOAD_SECRET).length < 24) throw new Error('Configuração incompleta')
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.DOWNLOAD_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
@@ -57,9 +65,7 @@ async function assinatura(env, id) {
   return [...new Uint8Array(sig)].map(v => v.toString(16).padStart(2, '0')).join('')
 }
 async function ligacaoPdf(env, id) {
-  const raiz = new URL(String(env.PUBLIC_WORKER_URL || ''))
-  if (raiz.protocol !== 'https:' && !(raiz.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(raiz.hostname))) throw new Error('Endereço público inválido')
-  if (raiz.username || raiz.password || raiz.search || raiz.hash) throw new Error('Endereço público inválido')
+  const raiz = raizWorker(env.PUBLIC_WORKER_URL)
   const url = new URL(`/api/planos/${id}/pdf`, raiz)
   url.searchParams.set('assinatura', await assinatura(env, id))
   return url.toString()
@@ -70,26 +76,6 @@ function estadoPublico(job) {
     enviadoEm: job.enviadoEm || null, metodo: job.plano.metodo,
     faseIncerta: estado === 'incerto' ? (job.faseIncerta || 'entrega') : null }
 }
-async function emailJS(env, template, parametros) {
-  if (!env.EMAILJS_SERVICE_ID || !env.EMAILJS_PUBLIC_KEY || !template) throw new FalhaEmail('E-mail indisponível', false)
-  const corpo = { service_id: env.EMAILJS_SERVICE_ID, template_id: template,
-    user_id: env.EMAILJS_PUBLIC_KEY, template_params: parametros }
-  if (env.EMAILJS_PRIVATE_KEY) corpo.accessToken = env.EMAILJS_PRIVATE_KEY
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 12000)
-  try {
-    const resposta = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-      method: 'POST', signal: controller.signal,
-      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo)
-    })
-    if (!resposta.ok) throw new FalhaEmail(`Envio recusado (${resposta.status})`,
-      resposta.status >= 500 || resposta.status === 429 || resposta.status === 408)
-  } catch (e) {
-    if (e instanceof FalhaEmail) throw e
-    throw new FalhaEmail('Não foi possível confirmar o resultado do serviço de e-mail.', true)
-  } finally { clearTimeout(timeout) }
-}
-
 function parametrosConfirmacao(job) {
   return {
     to_email: job.email, nome: job.pedido.nome || 'Jovem', area: job.pedido.area,
@@ -102,7 +88,7 @@ function parametrosConfirmacao(job) {
   }
 }
 async function gerarOpcional(p, env) {
-  const base = gerarPlano(p)
+  const base = gerarPlanoDiario(p)
   if (!p.usarIA || !env.GEMINI_API_KEY) return base
   try {
     const instrucao = `Produz apenas JSON válido com chaves diagnostico e estrategia (textos curtos). És um orientador educativo moçambicano. Não inventes vagas, cursos pagos, estatísticas ou garantias de contratação. Área: ${limparTexto(p.area, 80)}. Objectivo: ${limparTexto(p.objetivo, 450)}. Situação: ${limparTexto(p.situacao, 80)}. Dificuldade: ${limparTexto(p.dificuldade, 200)}.`
@@ -122,8 +108,10 @@ async function gerarOpcional(p, env) {
     const dados = await response.json()
     const conteudo = JSON.parse(dados.candidates?.[0]?.content?.parts?.[0]?.text || '{}')
     if (typeof conteudo.diagnostico !== 'string' || typeof conteudo.estrategia !== 'string') return base
-    return { ...base, diagnostico: limparTexto(conteudo.diagnostico, 600),
-      estrategia: limparTexto(conteudo.estrategia, 600), metodo: 'Plano com personalização opcional' }
+    const diagnostico = limparTexto(conteudo.diagnostico, 600)
+    const estrategia = limparTexto(conteudo.estrategia, 600)
+    if (!diagnostico || !estrategia) return base
+    return { ...base, diagnostico, estrategia, metodo: 'Plano com personalização opcional' }
   } catch { return base }
 }
 
@@ -210,8 +198,8 @@ export class PlanoJob {
       return responder({ existente: true, ...estadoPublico(job), plano: job.plano }, job.estado === 'a_confirmar' || job.estado === 'por_confirmar' ? 202 : 200)
     }
     if (url.pathname === '/estado' && request.method === 'GET') {
-      const segredo = request.headers.get('Authorization')?.replace(/^Bearer\s+/i, '') || ''
-      if (!/^[0-9a-f]{48}$/.test(segredo)) return erro('Acesso não autorizado.', 401)
+      const segredo = request.headers.get('Authorization')?.match(/^Bearer +([0-9a-f]{48})$/i)?.[1]
+      if (!segredo) return erro('Acesso não autorizado.', 401)
       const job = await this.state.storage.get('job')
       if (!job || job.expiraEm < Date.now()) return erro('Pedido expirado.', 404)
       if (await digest(segredo) !== job.hash) return erro('Acesso não autorizado.', 401)
@@ -286,17 +274,45 @@ export class PlanoJob {
   }
 }
 
+async function lerPedido(request) {
+  if (Number(request.headers.get('Content-Length')) > MAXIMO_PEDIDO_BYTES) return { excessivo: true }
+  if (!request.body) return {}
+  const fluxo = request.body.getReader()
+  const leitor = new TextDecoder('utf-8', { fatal: true })
+  let tamanho = 0
+  let texto = ''
+  try {
+    while (true) {
+      const { done, value } = await fluxo.read()
+      if (done) break
+      tamanho += value.byteLength
+      if (tamanho > MAXIMO_PEDIDO_BYTES) {
+        await fluxo.cancel().catch(() => {})
+        return { excessivo: true }
+      }
+      texto += leitor.decode(value, { stream: true })
+    }
+    return { dados: JSON.parse(texto + leitor.decode()) }
+  } catch {
+    await fluxo.cancel().catch(() => {})
+    return {}
+  } finally { fluxo.releaseLock() }
+}
+
 async function criarPedido(request, env, headers) {
   if (!configuracaoEnvio(env)) return erro('O envio ainda não está configurado.', 503, headers)
-  let dados
-  try {
-    const texto = await request.text()
-    if (texto.length > 8000) return erro('Pedido demasiado grande.', 413, headers)
-    dados = JSON.parse(texto)
-  } catch { return erro('Pedido inválido.', 400, headers) }
+  const tipo = request.headers.get('Content-Type')?.split(';', 1)[0].trim().toLowerCase()
+  if (tipo !== 'application/json') return erro('O pedido deve usar application/json.', 415, headers)
+  const { dados, excessivo } = await lerPedido(request)
+  if (excessivo) return erro('Pedido demasiado grande.', 413, headers)
+  if (!dados || typeof dados !== 'object' || Array.isArray(dados)) return erro('Pedido inválido.', 400, headers)
   const erros = validarPerfil(dados, { exigirEmail: true })
+  for (const campo of ['nome', 'objetivo', 'competencias', 'dificuldade', 'email', 'website']) {
+    if (dados[campo] !== undefined && typeof dados[campo] !== 'string') erros[campo] = 'Introduza um texto válido.'
+  }
+  if (dados.usarIA !== undefined && typeof dados.usarIA !== 'boolean') erros.usarIA = 'Escolha uma opção válida.'
   if (Object.keys(erros).length) return responder({ erro: 'Verifique os campos do formulário.', erros }, 422, headers)
-  if (!SUBMISSAO_RE.test(String(dados.submissaoId || ''))) return erro('Identificador do pedido inválido.', 422, headers)
+  if (typeof dados.submissaoId !== 'string' || !SUBMISSAO_RE.test(dados.submissaoId)) return erro('Identificador do pedido inválido.', 422, headers)
   const pedido = {
     nome: limparTexto(dados.nome, 90), area: dados.area, situacao: dados.situacao,
     objetivo: limparTexto(dados.objetivo, 450), disponibilidade: dados.disponibilidade,
@@ -342,6 +358,10 @@ async function criarPedido(request, env, headers) {
     return erro('Não foi possível verificar o limite de envios. Tenta novamente.', 503, headers)
   }
   const plano = await gerarOpcional(pedido, env)
+  if (erroPlano(plano)) {
+    await libertarReservas()
+    return erro('Não foi possível gerar um plano válido.', 503, headers)
+  }
   const token = await gerarToken(env, id, email)
   const agora = Date.now()
   const job = { id, impressao, hash: await digest(token), email, pedido, plano,
@@ -380,21 +400,32 @@ async function criarPedido(request, env, headers) {
 }
 
 export default {
+  scheduled(evento, env, contexto) {
+    contexto.waitUntil(executarAlertas(env, evento.scheduledTime))
+  },
   async fetch(request, env) {
     const headers = origemPermitida(request, env)
     const origin = request.headers.get('Origin')
-    if (origin && !headers['Access-Control-Allow-Origin']) return erro('Origem não autorizada.', 403)
-    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers })
+    if (origin && !headers['Access-Control-Allow-Origin']) return erro('Origem não autorizada.', 403, headers)
+    if (request.method === 'OPTIONS') {
+      headers.Vary = 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers'
+      const metodo = request.headers.get('Access-Control-Request-Method')
+      const campos = (request.headers.get('Access-Control-Request-Headers') || '').toLowerCase().split(',').map(v => v.trim()).filter(Boolean)
+      if ((metodo && !['GET', 'POST'].includes(metodo)) || campos.some(v => !['authorization', 'content-type'].includes(v))) {
+        return erro('Preflight não autorizado.', 403, headers)
+      }
+      return new Response(null, { status: 204, headers })
+    }
     const url = new URL(request.url)
     try {
       if (url.pathname === '/api/saude' && request.method === 'GET') return responder({ ok: true,
         aplicacao: 'RumoCerto MZ', versao: VERSAO_PROTOCOLO,
         envioDisponivel: configuracaoEnvio(env) }, 200, headers)
-      if (url.pathname === '/api/planos' && request.method === 'POST') return criarPedido(request, env, headers)
-      const match = url.pathname.match(/^\/api\/planos\/([0-9a-f-]{36})(\/pdf)?$/)
+      if (url.pathname === '/api/planos' && request.method === 'POST') return await criarPedido(request, env, headers)
+      const match = url.pathname.match(ROTA_PEDIDO)
       if (match && request.method === 'GET') {
         if (!env.PLANOS) return erro('Serviço indisponível.', 503, headers)
-        const objecto = env.PLANOS.get(env.PLANOS.idFromName(match[1]))
+        const objecto = env.PLANOS.get(env.PLANOS.idFromName(match[1].toLowerCase()))
         const interno = new URL(match[2] ? 'https://interno/pdf' : 'https://interno/estado')
         if (match[2]) interno.searchParams.set('assinatura', url.searchParams.get('assinatura') || '')
         const upstream = await objecto.fetch(interno, { headers: { Authorization: request.headers.get('Authorization') || '' } })

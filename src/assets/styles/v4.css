@@ -1,0 +1,64 @@
+/* Área pessoal, catálogo e administração. */
+#conteudo { scroll-margin-top: 85px; }
+.rc-page, .rc-narrow { display: grid; gap: 20px; }
+.rc-narrow { max-width: 580px; }
+.rc-page .page-heading, .rc-narrow .page-heading { margin: 0; }
+.rc-page > .back-link { justify-self: start; }
+.rc-panel { min-width: 0; }
+.rc-panel > :last-child, .rc-card > :last-child { margin-bottom: 0; }
+.rc-panel h2 { font-size: clamp(1.18rem, 2vw, 1.5rem); }
+.rc-panel ul, .rc-card ul, .rc-card ol { padding-inline-start: 1.3rem; }
+.rc-panel li + li, .rc-card li + li { margin-top: 0.45rem; }
+.rc-card-grid, .rc-editor, .rc-form-grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+.rc-card { min-width: 0; overflow-wrap: anywhere; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.rc-card h2 { margin: 0; font-size: 1.25rem; }
+.rc-card p { margin-bottom: 4px; }
+.rc-card a, .rc-actions a:not(.btn), .rc-panel a:not(.btn) { color: #07685f; text-underline-offset: 3px; }
+.rc-form { display: grid; gap: 16px; }
+.rc-form h2 { margin: 0; }
+.rc-form > .btn, .rc-filtros { justify-self: start; }
+.rc-form label { min-width: 0; display: grid; gap: 6px; font-weight: 700; font-size: 0.92rem; color: var(--ink); }
+.rc-campo { display: grid; gap: 6px; min-width: 0; }
+.rc-form label > small, .rc-campo > small { color: var(--muted); font-size: 0.875rem; font-weight: 400; }
+.rc-form :is(input:not([type="checkbox"]), select, textarea) {
+  background: #fff; color: var(--ink); border: 1px solid #aebfbe; border-radius: 9px;
+  width: 100%; min-height: 45px; padding: 9px 12px; font-size: 1rem;
+}
+.rc-form select {
+  appearance: none; padding-inline-end: 2rem;
+  background: #fff linear-gradient(45deg, transparent 49%, var(--ink) 50%, var(--ink) 60%, transparent 61%) right 16px center / 6px 7px no-repeat;
+}
+.rc-form textarea { min-height: 110px; resize: vertical; }
+.rc-form input[type="checkbox"] { width: 19px; height: 19px; accent-color: #0f7568; flex: 0 0 auto; }
+.rc-form .rc-check, .rc-choices label { display: flex; gap: 8px; align-items: center; min-height: 32px; }
+.rc-choices { min-width: 0; border: 1px solid var(--line); border-radius: 10px; display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 10px 14px; }
+.rc-choices legend { font-weight: 800; padding-inline: 4px; }
+.rc-filtros { width: 100%; }
+.rc-filtros > div { margin-top: 16px; }
+.rc-page summary { cursor: pointer; font-weight: 700; color: var(--navy); }
+.rc-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; }
+.rc-actions [aria-pressed="true"] { background: #d7f2ea; border-color: #47988e; }
+.rc-narrow article > nav { margin-top: 20px; }
+.rc-meta { margin: 0; display: grid; gap: 8px 16px; width: 100%; font-size: 0.9rem; }
+.rc-meta-wide { margin-bottom: 1.25rem; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+.rc-meta dt { color: var(--muted); }
+.rc-meta dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.rc-tag { color: #07685f; font-size: 0.875rem; font-weight: 800; letter-spacing: 0.02em; }
+.rc-texto { white-space: pre-wrap; overflow-wrap: anywhere; }
+.rc-preview { align-self: start; }
+.rc-error, .rc-success, .rc-status { border: 1px solid; border-radius: 9px; padding: 12px 15px; margin: 0; }
+.rc-error { background: #fff4f1; color: #842c28; border-color: #ecc8c0; }
+.rc-success { background: #eaf8f0; color: #195c42; border-color: #bbdfc8; }
+.rc-status { background: #eef5f8; color: #23475a; border-color: #d3e5ec; }
+.rc-error p { margin: 0; }
+.rc-log { overflow-wrap: anywhere; }
+.rc-log small, .rc-match small { display: block; color: var(--muted); }
+.rc-planos { margin-bottom: 20px; }
+.nav-links.nav-open { max-height: calc(100dvh - 70px); overflow-y: auto; }
+@media (min-width: 580px) {
+  .rc-card-grid, .rc-form-grid, .rc-meta-wide { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 970px) {
+  .rc-card-grid, .rc-meta-wide { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .rc-editor { grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); align-items: start; }
+}

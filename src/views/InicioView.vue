@@ -22,7 +22,7 @@ const proximaTarefa = computed(() => {
         <p>Defina objectivos profissionais e acompanhe um plano de desenvolvimento de 30 dias, adaptado à sua disponibilidade.</p>
         <div class="hero-buttons">
           <RouterLink class="btn btn-primary" :to="plano ? '/progresso' : '/plano'">{{ plano ? 'Acompanhar plano' : 'Criar plano' }} <span aria-hidden="true">↗</span></RouterLink>
-          <RouterLink class="btn btn-on-dark" to="/indicadores">Consultar indicadores</RouterLink>
+          <RouterLink class="btn btn-on-dark" to="/oportunidades">Explorar oportunidades</RouterLink>
         </div>
         <p class="hero-assurance">Acesso livre · Sem registo obrigatório</p><div v-if="plano" class="hero-resume" role="status"><span class="resume-dot"></span> Progresso: <strong>{{ progresso.feitas }} de {{ progresso.total }}</strong> actividades concluídas.</div>
       </div>

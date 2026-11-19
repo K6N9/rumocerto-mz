@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { diaDaTarefa } from '../../shared/planner.js'
 const props = defineProps({
   semana: { type: Object, required: true },
   concluidas: { type: Array, default: () => [] },
@@ -21,12 +22,12 @@ const percentagem = computed(() => Math.round(100 * feitas.value / Math.max(1, p
       <span class="week-chevron" aria-hidden="true">⌄</span>
     </summary>
     <div class="week-content">
-      <div v-if="interactivo" class="week-progress-track" role="progressbar" :aria-label="`Progresso da semana ${semana.numero}`" :aria-valuenow="percentagem" aria-valuemin="0" aria-valuemax="100"><span :style="{ width: percentagem + '%' }"></span></div><p class="week-instruction">{{ interactivo ? 'Assinala cada tarefa quando a concluíres.' : 'Tarefas sugeridas para esta semana.' }}</p>
+      <div v-if="interactivo" class="week-progress-track" role="progressbar" :aria-label="`Progresso da semana ${semana.numero}`" :aria-valuenow="percentagem" aria-valuemin="0" aria-valuemax="100"><span :style="{ width: percentagem + '%' }"></span></div><p class="week-instruction">{{ interactivo ? 'Assinale cada tarefa quando a concluir.' : 'Tarefas sugeridas para esta semana.' }}</p>
       <ul class="task-list">
         <li v-for="(t, i) in semana.tarefas" :key="i">
           <label v-if="interactivo" class="task-check">
             <input type="checkbox" :checked="concluidas.includes(`${semana.numero - 1}-${i}`)" @change="$emit('alternar', `${semana.numero - 1}-${i}`)" />
-            <span :class="{ 'is-done': concluidas.includes(`${semana.numero - 1}-${i}`) }">{{ t }}<small v-if="semana.minutosPorTarefa?.[i]">{{ semana.minutosPorTarefa[i] }} min</small></span>
+            <span :class="{ 'is-done': concluidas.includes(`${semana.numero - 1}-${i}`) }">{{ t }}<small>Dia {{ diaDaTarefa(semana, i) }}<template v-if="semana.minutosPorTarefa?.[i]"> · {{ semana.minutosPorTarefa[i] }} min</template></small></span>
           </label>
           <span v-else class="task-static"><span class="task-dot" aria-hidden="true"></span>{{ t }}</span>
         </li>

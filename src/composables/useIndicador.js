@@ -5,12 +5,15 @@ const TTL = 60*60*1000
 export function useIndicador(codigo) {
   const serie=ref([]),carregando=ref(true),erro=ref(''),aviso=ref(''),consultaEm=ref('')
   let controller=null
+  let codigoAnterior
   async function carregar(forcar=false) {
     const id=toValue(codigo)
     if(controller)controller.abort()
     controller=new AbortController();const atual=controller
+    const timeout = setTimeout(() => atual.abort('prazo'), 12000)
+    if (codigoAnterior !== id) { serie.value = []; consultaEm.value = ''; codigoAnterior = id }
     erro.value='';aviso.value='';carregando.value=true
-    if(!id) {serie.value=[];erro.value='Indicador inexistente.';carregando.value=false;return}
+    if(!id) {serie.value=[];erro.value='Indicador inexistente.';carregando.value=false;clearTimeout(timeout);return}
     try {
       const chave=`rumocerto:indicador:${id}`
       let guardado=cache.get(chave)
@@ -25,14 +28,14 @@ export function useIndicador(codigo) {
       serie.value=dados;consultaEm.value=new Date().toISOString()
       const item={serie:dados,em:Date.now(),consulta:consultaEm.value};cache.set(chave,item)
       try{sessionStorage.setItem(chave,JSON.stringify(item))}catch{}
-    } catch(e) {if(!atual.signal.aborted){
+    } catch(e) {if(!atual.signal.aborted || atual.signal.reason === 'prazo'){
       const chave=`rumocerto:indicador:${id}`
       let anterior=cache.get(chave)
       if(!anterior)try{anterior=JSON.parse(sessionStorage.getItem(chave)||'null')}catch{}
       if(Array.isArray(anterior?.serie)&&anterior.serie.length){serie.value=anterior.serie;consultaEm.value=anterior.consulta;aviso.value='A fonte não está disponível neste momento. São apresentados os últimos valores guardados neste dispositivo.'}
       else{erro.value='Não foi possível obter os indicadores. Verifique a ligação à Internet e tente novamente.';serie.value=[]}
     }}
-    finally{if(controller===atual)carregando.value=false}
+    finally{clearTimeout(timeout);if(controller===atual)carregando.value=false}
   }
   onMounted(()=>carregar());watch(()=>toValue(codigo),()=>carregar());onUnmounted(()=>controller?.abort())
   return {serie,carregando,erro,aviso,consultaEm,carregar}

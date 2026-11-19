@@ -1,0 +1,46 @@
+project_id = "rumocerto-mz-local"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.seed]
+enabled = false
+
+[studio]
+enabled = true
+port = 54323
+
+[local_smtp]
+enabled = true
+port = 54324
+
+[storage]
+enabled = false
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173/"
+additional_redirect_urls = ["http://localhost:5173/**", "http://127.0.0.1:5173/**"]
+minimum_password_length = 8
+enable_signup = true
+
+[auth.email]
+enabled = true
+enable_confirmations = true
+
+[auth.email.template.confirmation]
+subject = "Confirmar endereço de e-mail no RumoCerto MZ"
+content_path = "./supabase/templates/confirmacao.html"
+
+[auth.email.template.recovery]
+subject = "Recuperar palavra-passe no RumoCerto MZ"
+content_path = "./supabase/templates/recuperacao.html"

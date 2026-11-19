@@ -343,3 +343,46 @@ test('a reserva não pode ser libertada por outro identificador', async () => {
   assert.deepEqual(await (await gate.fetch('https://interno/libertar',opcoes(id))).json(),{libertado:true})
   assert.equal((await gate.fetch('https://interno/reservar',opcoes(crypto.randomUUID()))).status,200)
 })
+
+test('frontend rejeita saúde legada, versão errada e booleanos inválidos', async () => {
+  const { classificarSaudeWorker } = await import('../shared/versao.js')
+  assert.equal(classificarSaudeWorker(true, { ok: true, gratuito: true }), 'incompativel')
+  for (const val of ['true', 'false', 1, null]) {
+    assert.equal(classificarSaudeWorker(true, { ok: true, versao: '3.5', envioDisponivel: val }), 'incompativel')
+  }
+  assert.equal(classificarSaudeWorker(true, { ok: true, versao: '3.4', envioDisponivel: true }), 'incompativel')
+  assert.equal(classificarSaudeWorker(false, { ok: true, versao: '3.5', envioDisponivel: true }), 'indisponivel')
+  assert.equal(classificarSaudeWorker(true, { ok: true, versao: '3.5', envioDisponivel: false }), 'indisponivel')
+  assert.equal(classificarSaudeWorker(true, { ok: true, versao: '3.5', envioDisponivel: true }), 'disponivel')
+})
+
+test('preflight para o estado autenticado permite Authorization apenas na origem autorizada', async () => {
+  const { env } = ambiente()
+  const url = 'https://rumocerto.example.com/api/planos/' + crypto.randomUUID()
+  const para = (origin, campos) => new Request(url, { method: 'OPTIONS', headers: {
+    Origin: origin, 'Access-Control-Request-Method': 'GET', 'Access-Control-Request-Headers': campos
+  } })
+  const valido = await worker.fetch(para('https://k6n9.github.io', 'authorization'), env)
+  assert.equal(valido.status, 204)
+  assert.equal(valido.headers.get('Access-Control-Allow-Origin'), 'https://k6n9.github.io')
+  assert.match(valido.headers.get('Access-Control-Allow-Headers'), /Authorization/)
+  assert.match(valido.headers.get('Vary'), /Access-Control-Request-Headers/)
+  assert.equal((await worker.fetch(para('https://outro.example', 'authorization'), env)).status, 403)
+  assert.equal((await worker.fetch(para('https://k6n9.github.io', 'x-externo'), env)).status, 403)
+})
+
+test('Worker recusa pedidos inválidos antes de reservar Durable Objects', async () => {
+  const { env, planos, limites } = ambiente()
+  const url = 'https://rumocerto.example.com/api/planos'
+  const enviar = (body, tipo = 'application/json') => worker.fetch(new Request(url, {
+    method: 'POST', headers: { 'Content-Type': tipo }, body
+  }), env)
+  assert.equal((await enviar('{}', 'text/plain')).status, 415)
+  for (const body of ['null', '[]', '{']) assert.equal((await enviar(body)).status, 400)
+  assert.equal((await enviar(JSON.stringify({ ...dados(), outro: 'á'.repeat(4200) }))).status, 413)
+  for (const campo of [{ submissaoId: [crypto.randomUUID()] }, { email: ['ana@example.com'] }, { usarIA: 'true' }]) {
+    assert.equal((await enviar(JSON.stringify({ ...dados(), ...campo }))).status, 422)
+  }
+  assert.equal(planos.size, 0)
+  assert.equal(limites.size, 0)
+})

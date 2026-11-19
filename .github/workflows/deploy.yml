@@ -1,7 +1,7 @@
 name: Publicacao do RumoCerto MZ
 on:
   push:
-    branches: [main]
+    branches: [main, 'mabikane/rumocerto-v4']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -17,9 +17,10 @@ jobs:
           node-version: '22'
       - run: npm ci --no-audit --no-fund
       - run: npm test
+      - run: npm run check:syntax
       - run: npm run build
   publicar:
-    if: github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: verificar
     runs-on: ubuntu-latest
     permissions:
@@ -38,6 +39,8 @@ jobs:
       - run: npm run build
         env:
           VITE_WORKER_URL: ${{ vars.VITE_WORKER_URL }}
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

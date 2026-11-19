@@ -85,7 +85,7 @@ test('recupera plano especializado de preparação para entrevistas', () => {
 
 test('gerador de PDF Unicode incorpora mapa de caracteres e fonte TrueType quando disponível', async t => {
   const { existsSync, readFileSync } = await import('node:fs')
-  const caminho = ['/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', '/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf'].find(existsSync)
+  const caminho = ['/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', '/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf', '/System/Library/Fonts/Supplemental/Arial.ttf'].find(existsSync)
   if (!caminho) { t.skip('Fonte TrueType de teste não instalada neste sistema'); return }
   const p = { ...perfil(), objetivo: 'Preparar CV com 50€, marca ✓ e saudação Привет.' }
   const { gerarPdfUnicode } = await import('../shared/pdf.js')

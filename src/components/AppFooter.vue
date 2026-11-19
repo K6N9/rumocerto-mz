@@ -9,6 +9,7 @@ const logo = `${import.meta.env.BASE_URL}branding/simbolo.webp`
       <nav aria-label="Ligações do rodapé">
         <RouterLink to="/sobre">Sobre e privacidade</RouterLink>
         <RouterLink to="/indicadores">Indicadores</RouterLink>
+        <RouterLink to="/preparacao">Preparação profissional</RouterLink>
         <a href="https://data.worldbank.org/indicator/SL.UEM.1524.ZS?locations=MZ" target="_blank" rel="noopener noreferrer">Fonte dos dados</a>
       </nav>
     </div>

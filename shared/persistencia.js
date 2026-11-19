@@ -1,3 +1,5 @@
+import { planoValido } from './contratoPlano.js'
+export { planoValido } from './contratoPlano.js'
 import { assinaturaPerfil } from './estado.js'
 import { AREAS, SITUACOES, DISPONIBILIDADES, INTERNET } from './planner.js'
 
@@ -20,25 +22,6 @@ export function normalizarPerfil(valor) {
     else perfil[campo] = v.replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, LIMITE[campo] || 450)
   }
   return perfil
-}
-
-const texto = (valor, maximo) => typeof valor === 'string' && valor.length > 0 && valor.length <= maximo
-const lista = (valor, maximo, tamanho) => Array.isArray(valor) && valor.length <= maximo && valor.every(x => texto(x, tamanho))
-
-export function planoValido(plano) {
-  if (!plano || typeof plano !== 'object' || Array.isArray(plano)) return false
-  if (!texto(plano.titulo, 250) || !texto(plano.diagnostico, 2000) ||
-    !texto(plano.estrategia, 2000) || !texto(plano.metodo, 150) ||
-    !Array.isArray(plano.semanas) || plano.semanas.length !== 4) return false
-  if (!lista(plano.recursos, 20, 500) || !lista(plano.avisos, 20, 500)) return false
-  return plano.semanas.every((semana, i) => semana && typeof semana === 'object' &&
-    semana.numero === i + 1 && texto(semana.titulo, 250) && texto(semana.foco, 800) &&
-    texto(semana.entregavel, 800) && texto(semana.indicador, 800) &&
-    Array.isArray(semana.tarefas) && semana.tarefas.length >= 1 && semana.tarefas.length <= 10 &&
-    semana.tarefas.every(t => texto(t, 1200)) &&
-    Number.isInteger(semana.minutosSugeridos) && semana.minutosSugeridos >= 0 && semana.minutosSugeridos <= 10080 &&
-    Array.isArray(semana.minutosPorTarefa) && semana.minutosPorTarefa.length === semana.tarefas.length &&
-    semana.minutosPorTarefa.every(v => Number.isInteger(v) && v >= 0 && v <= 1440))
 }
 
 export function estadoInicial() {

@@ -1,3 +1,4 @@
+import { planoValido } from './contratoPlano.js'
 import { escolherPerfil } from './perfis.js'
 export const AREAS = ['Tecnologia e engenharia','Administração e gestão','Educação','Saúde','Comunicação e artes','Comércio e empreendedorismo','Outra área']
 export const SITUACOES = ['Estudante','Recém-formado(a)','À procura do primeiro emprego','Trabalho e estudo','Outra situação']
@@ -92,4 +93,71 @@ export function calcularProgresso(plano, marcadas=[]) {
   const validas = new Set(marcadas.filter(i=>/^\d-\d$/.test(String(i))))
   const feitas = [...validas].filter(k=>{const [s,t]=k.split('-').map(Number);return s>=0&&s<4&&t>=0&&t<(plano?.semanas?.[s]?.tarefas?.length||0)}).length
   return {total, feitas, percentagem: total?Math.round(feitas/total*100):0}
+}
+
+const REVISOES = [
+  'Rever as notas das actividades anteriores e anotar uma questão para consultar.',
+  'Escolher um resultado desta semana e escrever como poderá ser demonstrado.',
+  'Organizar os ficheiros de trabalho e verificar se consegue abrir as evidências guardadas.',
+  'Comparar o resultado com o objectivo e anotar um ajuste concreto para a próxima sessão.'
+]
+
+const diasDaSemana = numero => numero === 4 ? 9 : 7
+
+export function podeConverterPlano(plano) {
+  return planoValido(plano) && plano.semanas.every(semana => semana.tarefas.length === 5)
+}
+
+function distribuirPlanoDiario(plano) {
+  const correspondencias = new Map()
+  const semanas = plano.semanas.map(semana => {
+    const dias = diasDaSemana(semana.numero)
+    const numero = semana.tarefas.length
+    const tarefas = []
+    const tempos = []
+    const posicoesRevisao = []
+    const totalCoerente = semana.minutosPorTarefa.reduce((total, minutos) => total + minutos, 0) === semana.minutosSugeridos
+    let indice = 0
+    for (let dia = 0; dia < dias; dia++) {
+      if (indice < numero && dia === Math.floor(indice * dias / numero)) {
+        tarefas.push(semana.tarefas[indice])
+        const minutos = semana.minutosPorTarefa[indice]
+        tempos.push(totalCoerente ? Math.floor(minutos * 0.8) : minutos)
+        const prefixo = semana.numero - 1
+        correspondencias.set(`${prefixo}-${indice}`, `${prefixo}-${dia}`)
+        indice++
+      } else {
+        tarefas.push(REVISOES[posicoesRevisao.length])
+        posicoesRevisao.push(dia)
+        tempos.push(0)
+      }
+    }
+    if (totalCoerente) {
+      const restantes = semana.minutosSugeridos - tempos.reduce((total, minutos) => total + minutos, 0)
+      const extra = posicoesRevisao.length
+      posicoesRevisao.forEach((dia, index) => {
+        tempos[dia] = Math.floor(restantes / extra) + (index < restantes % extra ? 1 : 0)
+      })
+    }
+    return { ...semana, tarefas, minutosPorTarefa: tempos }
+  })
+  return { plano: { ...plano, semanas }, correspondencias }
+}
+
+export function gerarPlanoDiario(perfil, opcoes) {
+  return distribuirPlanoDiario(gerarPlano(perfil, opcoes)).plano
+}
+
+export function converterPlanoDiario(plano, concluidas) {
+  if (!podeConverterPlano(plano)) return null
+  const { plano: novo, correspondencias } = distribuirPlanoDiario(plano)
+  novo.criadoEm = new Date().toISOString()
+  const marcadas = [...new Set(concluidas)].flatMap(chave =>
+    correspondencias.has(chave) ? [correspondencias.get(chave)] : [])
+  return { plano: novo, concluidas: marcadas }
+}
+
+export function diaDaTarefa(semana, indice) {
+  const dias = diasDaSemana(semana.numero)
+  return (semana.numero - 1) * 7 + 1 + Math.floor(indice * dias / semana.tarefas.length)
 }

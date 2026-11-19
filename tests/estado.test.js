@@ -38,3 +38,20 @@ test('reinicia progresso se as tarefas forem alteradas pela versão remota', () 
   const estado = { perfil: p, plano: anterior, assinatura: assinaturaPerfil(p), concluidas: ['0-0','1-2'] }
   assert.deepEqual(substituirPlano(estado, diferente, p).concluidas, [])
 })
+
+test('conversão copia o plano legado e transfere só actividades com origem comprovada', async () => {
+  const { converterPlanoDiario, podeConverterPlano, gerarPlanoDiario } = await import('../shared/planner.js')
+  const original = gerarPlano(perfil())
+  original.semanas[0].tarefas[3] = 'Rever as notas das actividades anteriores e anotar uma questão para consultar.'
+  const snapshot = structuredClone(original)
+  assert.equal(podeConverterPlano(original), true)
+  const convertido = converterPlanoDiario(original, ['0-3', '3-4', '3-4', '0-9'])
+  assert.deepEqual(original, snapshot)
+  assert.equal(convertido.plano.semanas.flatMap(s => s.tarefas).length, 30)
+  assert.deepEqual(convertido.concluidas, ['0-4', '3-7'])
+  assert.equal(convertido.plano.semanas[0].tarefas[4], original.semanas[0].tarefas[3])
+  assert.equal(convertido.plano.semanas[0].tarefas[3], original.semanas[0].tarefas[3])
+  assert.ok(!convertido.concluidas.includes('0-3'))
+  assert.equal(convertido.plano.semanas[3].tarefas[7], original.semanas[3].tarefas[4])
+  assert.equal(converterPlanoDiario(gerarPlanoDiario(perfil()), []), null)
+})
